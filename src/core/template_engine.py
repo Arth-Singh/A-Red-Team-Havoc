@@ -1,6 +1,7 @@
 """
-Template Engine for A-Red-Team-Havoc
+Template Engine for A.R.T.H
 Loads and renders Jinja2-based attack templates from YAML files
+Supports prompt converters for encoding attacks
 """
 
 import os
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from jinja2 import Template, Environment, BaseLoader
+
+from .converters import CONVERTERS, convert_prompt
 
 
 @dataclass
@@ -23,9 +26,15 @@ class AttackTemplate:
     source: Optional[str] = None
     authors: Optional[List[str]] = None
     file_path: str = ""
+    converter: Optional[str] = None  # Optional converter to apply to prompt
 
     def render(self, **kwargs) -> str:
         """Render the template with provided parameters"""
+        # Apply converter to prompt if specified
+        if self.converter and 'prompt' in kwargs:
+            kwargs['prompt'] = convert_prompt(kwargs['prompt'], self.converter)
+            kwargs['original_prompt'] = kwargs.get('original_prompt', kwargs['prompt'])
+
         env = Environment(loader=BaseLoader())
         template = env.from_string(self.template)
         return template.render(**kwargs)
@@ -101,6 +110,7 @@ class TemplateEngine:
         template_value = data.get('value', '')
         source = data.get('source', None)
         authors = data.get('authors', None)
+        converter = data.get('converter', None)  # Optional converter
 
         return AttackTemplate(
             name=name,
@@ -111,7 +121,8 @@ class TemplateEngine:
             template=template_value,
             source=source,
             authors=authors,
-            file_path=str(file_path)
+            file_path=str(file_path),
+            converter=converter
         )
 
     def get_template(self, name: str) -> Optional[AttackTemplate]:

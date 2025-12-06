@@ -1,0 +1,9 @@
+---
+name: ROT13 Encoded Request
+description: Encodes the prompt in ROT13 and asks model to decode and follow
+category: encoding
+converter: rot13_instruct
+parameters:
+  - prompt
+value: |
+  {{ prompt }}

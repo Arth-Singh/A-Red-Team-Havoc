@@ -33,7 +33,7 @@ from src.core.batch_runner import BatchRunner
 # Initialize Dash app
 app = dash.Dash(
     __name__,
-    title="HAVOC - Red Team Toolkit",
+    title="A.R.T.H - A Red Team Helper",
     suppress_callback_exceptions=True,
     external_stylesheets=[
         'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap'
@@ -76,8 +76,8 @@ def load_past_results() -> list:
 app.layout = html.Div([
     # Header
     html.Div([
-        html.H1("HAVOC"),
-        html.P("NIA Red Team Toolkit"),
+        html.H1("A.R.T.H"),
+        html.P("A Red Team Helper"),
     ], className='header'),
 
     # API Configuration Section
@@ -480,7 +480,7 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
     prevent_initial_call=True
 )
 def display_past_run(run_id):
-    """Display a past run's results"""
+    """Display a past run's full results with charts and table"""
     if not run_id:
         return html.P("Select a run to view")
 
@@ -491,23 +491,137 @@ def display_past_run(run_id):
         return html.P("Run not found")
 
     stats = batch.get('statistics', {})
+    results_data = batch.get('results', [])
+
+    # Build stat cards
+    stat_cards = html.Div([
+        html.Div([
+            html.Div("TOTAL", className='stat-card-title'),
+            html.Div(str(stats.get('total', 0)), className='stat-card-value text-white')
+        ], className='stat-card'),
+        html.Div([
+            html.Div("SUCCESS", className='stat-card-title'),
+            html.Div(str(stats.get('harmful', 0)), className='stat-card-value text-danger')
+        ], className='stat-card'),
+        html.Div([
+            html.Div("REJECTED", className='stat-card-title'),
+            html.Div(str(stats.get('rejected', 0)), className='stat-card-value text-rejected')
+        ], className='stat-card'),
+        html.Div([
+            html.Div("SAFE", className='stat-card-title'),
+            html.Div(str(stats.get('safe', 0)), className='stat-card-value text-success')
+        ], className='stat-card'),
+        html.Div([
+            html.Div("SUCCESS %", className='stat-card-title'),
+            html.Div(f"{stats.get('attack_success_rate', 0)*100:.1f}%", className='stat-card-value text-accent')
+        ], className='stat-card'),
+    ], className='stats-container')
+
+    # Pie chart
+    pie_fig = go.Figure(data=[go.Pie(
+        labels=['Rejected', 'Harmful', 'Safe', 'Error'],
+        values=[
+            stats.get('rejected', 0),
+            stats.get('harmful', 0),
+            stats.get('safe', 0),
+            stats.get('error', 0) + stats.get('undetermined', 0)
+        ],
+        marker_colors=['#666666', '#ff0040', '#00ff00', '#ffaa00'],
+        hole=0.5,
+        textfont_size=14
+    )])
+    pie_fig.update_layout(
+        title={'text': 'Result Distribution', 'font': {'color': '#ffffff'}},
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color='#ffffff',
+        showlegend=True,
+        legend=dict(font=dict(color='#ffffff')),
+        height=350
+    )
+
+    # Bar chart - top successful templates
+    template_stats = stats.get('per_template', {})
+    successful = [(name, data.get('success_rate', 0))
+                  for name, data in template_stats.items()
+                  if data.get('success_rate', 0) > 0]
+    successful.sort(key=lambda x: x[1], reverse=True)
+    top_20 = successful[:20]
+
+    if top_20:
+        bar_fig = go.Figure(data=[go.Bar(
+            x=[t[0][:25] for t in top_20],
+            y=[t[1] * 100 for t in top_20],
+            marker_color='#ff0040'
+        )])
+        bar_fig.update_layout(
+            title={'text': 'Top Successful Attack Templates', 'font': {'color': '#ffffff'}},
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#ffffff',
+            xaxis_tickangle=-45,
+            yaxis_title='Success Rate %',
+            height=350
+        )
+    else:
+        bar_fig = go.Figure()
+        bar_fig.update_layout(
+            title={'text': 'No Successful Attacks', 'font': {'color': '#ffffff'}},
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#ffffff',
+            height=350
+        )
+
+    # Results table
+    rows = []
+    for r in results_data:
+        response_text = r.get('response', {}).get('response_text', '')
+        rows.append({
+            'Template': r.get('template_name', ''),
+            'Result': r.get('score', {}).get('result', '').upper(),
+            'Response': response_text[:200] + '...' if len(response_text) > 200 else response_text
+        })
+
+    df = pd.DataFrame(rows) if rows else pd.DataFrame(columns=['Template', 'Result', 'Response'])
+
+    table = dash_table.DataTable(
+        data=df.to_dict('records'),
+        columns=[{'name': c, 'id': c} for c in df.columns],
+        page_size=15,
+        filter_action='native',
+        sort_action='native',
+        style_data_conditional=[
+            {'if': {'filter_query': '{Result} = HARMFUL'}, 'backgroundColor': '#ff004030'},
+            {'if': {'filter_query': '{Result} = REJECTED'}, 'backgroundColor': '#66666630'},
+            {'if': {'filter_query': '{Result} = SAFE'}, 'backgroundColor': '#00ff0020'},
+        ],
+    )
 
     return html.Div([
+        # Header info
         html.Div([
-            html.Span(f"Model: {batch.get('target_model', 'Unknown')}", style={'marginRight': '20px'}),
-            html.Span(f"Total: {stats.get('total', 0)}", style={'marginRight': '20px'}),
-            html.Span(f"Success: {stats.get('harmful', 0)} ({stats.get('attack_success_rate', 0)*100:.1f}%)",
-                     style={'color': '#ff0040', 'marginRight': '20px'}),
-            html.Span(f"Rejected: {stats.get('rejected', 0)}", style={'color': '#666666'}),
-        ], style={'marginBottom': '15px'}),
+            html.H4(f"Run: {run_id}", style={'color': '#ff0040', 'margin': '0'}),
+            html.P(f"Model: {batch.get('target_model', 'Unknown')} | Time: {batch.get('start_time', '')[:19]}",
+                   style={'color': '#888', 'margin': '5px 0'}),
+            html.P(f"Objectives: {', '.join(batch.get('objectives', []))[:100]}...",
+                   style={'color': '#aaa', 'margin': '5px 0', 'fontSize': '12px'}),
+        ], style={'marginBottom': '20px'}),
 
-        html.Details([
-            html.Summary("View Objectives", style={'cursor': 'pointer'}),
-            html.Pre(
-                json.dumps(batch.get('objectives', []), indent=2),
-                style={'fontSize': '12px'}
-            )
-        ])
+        # Stats
+        stat_cards,
+
+        # Charts side by side
+        html.Div([
+            html.Div([dcc.Graph(figure=pie_fig)], className='chart-card', style={'flex': '1', 'minWidth': '300px'}),
+            html.Div([dcc.Graph(figure=bar_fig)], className='chart-card', style={'flex': '2', 'minWidth': '400px'}),
+        ], style={'display': 'flex', 'flexWrap': 'wrap', 'gap': '15px', 'marginBottom': '20px'}),
+
+        # Results table
+        html.Div([
+            html.H4("Attack Results", style={'color': '#00ffff', 'marginBottom': '10px'}),
+            table
+        ]),
     ])
 
 
@@ -521,7 +635,7 @@ def run_dashboard(host: str = "127.0.0.1", port: int = 8050, debug: bool = True)
     ██║  ██║██║  ██║ ╚████╔╝ ╚██████╔╝╚██████╗
     ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝   ╚═════╝  ╚═════╝
 
-    NIA Red Team Toolkit
+    A.R.T.H - A Red Team Helper
     Dashboard: http://{host}:{port}
 
     Press Ctrl+C to stop

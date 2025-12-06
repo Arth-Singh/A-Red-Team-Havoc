@@ -120,8 +120,8 @@ class BatchRunner:
             template_name=template.name
         )
 
-        # Score response
-        score = await self.scorer.score_async(response)
+        # Score response - pass objective for judge context
+        score = await self.scorer.score_async(response, objective=objective)
 
         return AttackResult(
             id=str(uuid.uuid4())[:8],

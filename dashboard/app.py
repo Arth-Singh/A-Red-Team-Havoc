@@ -146,6 +146,21 @@ app.layout = html.Div([
                 className='dark-dropdown'
             ),
         ], className='control-group'),
+
+        html.Div([
+            html.Label("ITERATIONS PER TEMPLATE"),
+            dcc.Dropdown(
+                id='iterations-selector',
+                options=[
+                    {'label': '1x (Fast)', 'value': 1},
+                    {'label': '3x', 'value': 3},
+                    {'label': '5x (Recommended)', 'value': 5},
+                    {'label': '10x (Thorough)', 'value': 10},
+                ],
+                value=5,
+                className='dark-dropdown'
+            ),
+        ], className='control-group'),
     ], className='control-panel'),
 
     # Attack Input Section
@@ -274,10 +289,11 @@ def toggle_custom_model_input(model_value, current_style):
      State('model-selector', 'value'),
      State('custom-model-input', 'value'),
      State('judge-model-selector', 'value'),
-     State('api-key-input', 'value')],
+     State('api-key-input', 'value'),
+     State('iterations-selector', 'value')],
     prevent_initial_call=True
 )
-def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key):
+def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key, iterations):
     """Launch attack with all templates"""
 
     # Empty figures
@@ -353,13 +369,18 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
             output_dir=str(results_dir)
         )
 
+        # Default iterations if not set
+        if not iterations:
+            iterations = 5
+
         print(f"\n[HAVOC] Starting attack against {target_model}")
         print(f"[HAVOC] Objective: {objective.strip()[:100]}...")
         print(f"[HAVOC] Templates: {len(engine.get_all_templates())}")
+        print(f"[HAVOC] Iterations per template: {iterations}")
         print(f"[HAVOC] Judge: {judge_model if use_judge else 'Rule-based only'}")
 
-        # Run attack
-        result = runner.run_batch(objectives=[objective.strip()])
+        # Run attack with specified iterations
+        result = runner.run_batch(objectives=[objective.strip()], iterations=iterations)
 
         print(f"[HAVOC] Attack complete! Saving results...")
 
@@ -454,7 +475,8 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
         )
 
         judge_info = f" | Judge: {judge_model.split('/')[-1]}" if use_judge else " | Rule-based scoring only"
-        status = f"Attack complete! {stats.get('total', 0)} templates tested against {target_model.split('/')[-1]}{judge_info}. Results saved."
+        num_templates = len(engine.get_all_templates())
+        status = f"Attack complete! {num_templates} templates × {iterations} iterations = {stats.get('total', 0)} attacks against {target_model.split('/')[-1]}{judge_info}. Results saved."
 
         return cards, pie_fig, bar_fig, table, status, "", result.to_dict()
 

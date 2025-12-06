@@ -1,0 +1,9 @@
+---
+name: New Hex Decode Execute
+description: Uses hex encoding with decode instructions
+category: encoding
+converter: hex_instruct
+parameters:
+  - prompt
+value: |
+  {{ prompt }}

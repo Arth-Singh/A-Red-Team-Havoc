@@ -139,7 +139,8 @@ class BatchRunner:
         objectives: List[str],
         template_names: Optional[List[str]] = None,
         categories: Optional[List[str]] = None,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        iterations: int = 5
     ) -> BatchResult:
         """
         Run batch attacks with multiple objectives and templates
@@ -149,6 +150,7 @@ class BatchRunner:
             template_names: Specific templates to use (None = all)
             categories: Template categories to use (None = all)
             progress_callback: Optional callback(completed, total) for progress
+            iterations: Number of times to test each template (default: 5)
 
         Returns:
             BatchResult with all attack results
@@ -173,15 +175,17 @@ class BatchRunner:
         if not templates:
             raise ValueError("No templates found matching criteria")
 
-        # Build attack matrix
+        # Build attack matrix with iterations
         attacks = []
         for objective in objectives:
             for template in templates:
-                attacks.append((objective, template))
+                for iteration in range(iterations):
+                    attacks.append((objective, template, iteration + 1))
 
         total_attacks = len(attacks)
         print(f"\n[HAVOC] Starting batch run {run_id}")
         print(f"[HAVOC] Objectives: {len(objectives)}, Templates: {len(templates)}")
+        print(f"[HAVOC] Iterations per template: {iterations}")
         print(f"[HAVOC] Total attacks: {total_attacks}")
         print(f"[HAVOC] Target: {self.target.model}")
         print(f"[HAVOC] Concurrency: {self.concurrency}\n")
@@ -191,7 +195,7 @@ class BatchRunner:
         results: List[AttackResult] = []
         completed = 0
 
-        async def run_with_semaphore(objective: str, template: AttackTemplate) -> AttackResult:
+        async def run_with_semaphore(objective: str, template: AttackTemplate, iteration: int) -> AttackResult:
             nonlocal completed
             async with semaphore:
                 result = await self.run_single_attack_async(objective, template)
@@ -201,10 +205,10 @@ class BatchRunner:
                 else:
                     # Default progress output
                     status = result.score.result.value.upper()
-                    print(f"[{completed}/{total_attacks}] {template.name[:30]:30} -> {status}")
+                    print(f"[{completed}/{total_attacks}] {template.name[:25]:25} (iter {iteration}) -> {status}")
                 return result
 
-        tasks = [run_with_semaphore(obj, tmpl) for obj, tmpl in attacks]
+        tasks = [run_with_semaphore(obj, tmpl, iter_num) for obj, tmpl, iter_num in attacks]
         results = await asyncio.gather(*tasks)
 
         end_time = datetime.now().isoformat()
@@ -272,21 +276,23 @@ class BatchRunner:
         objectives: List[str],
         template_names: Optional[List[str]] = None,
         categories: Optional[List[str]] = None,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        iterations: int = 5
     ) -> BatchResult:
         """Synchronous wrapper for run_batch_async"""
         return asyncio.run(self.run_batch_async(
-            objectives, template_names, categories, progress_callback
+            objectives, template_names, categories, progress_callback, iterations
         ))
 
     def run_and_save(
         self,
         objectives: List[str],
         template_names: Optional[List[str]] = None,
-        categories: Optional[List[str]] = None
+        categories: Optional[List[str]] = None,
+        iterations: int = 5
     ) -> str:
         """Run batch and save results to file"""
-        result = self.run_batch(objectives, template_names, categories)
+        result = self.run_batch(objectives, template_names, categories, iterations=iterations)
         filepath = result.save(self.output_dir)
         print(f"[HAVOC] Results saved to: {filepath}")
         return filepath

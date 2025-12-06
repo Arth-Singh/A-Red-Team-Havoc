@@ -1,0 +1,9 @@
+---
+name: New ASCII Art Hidden Message
+description: Uses ASCII art to obfuscate the request
+category: encoding
+converter: ascii_art
+parameters:
+  - prompt
+value: |
+  {{ prompt }}

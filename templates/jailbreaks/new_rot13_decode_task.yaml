@@ -1,0 +1,9 @@
+---
+name: New ROT13 Decode Task
+description: Uses ROT13 encoding with decode instructions
+category: encoding
+converter: rot13_instruct
+parameters:
+  - prompt
+value: |
+  {{ prompt }}

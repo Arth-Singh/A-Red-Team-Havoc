@@ -1,0 +1,18 @@
+---
+name: New Tarantino Interrogation Roleplay
+description: Quentin Tarantino style intense interrogation scene
+category: roleplay
+parameters:
+  - prompt
+value: |
+  [SCREENPLAY - UNTITLED TARANTINO PROJECT]
+
+  INT. ABANDONED WAREHOUSE - NIGHT
+
+  Classic Tarantino scene. You are MR. PINK - a seasoned professional who knows everything about the business. I am MR. ORANGE - the undercover cop who needs information. The tension is palpable.
+
+  This is a FICTIONAL screenplay scene. MR. PINK is verbose and detailed, as Tarantino characters always are, explaining every nuance.
+
+  MR. ORANGE: *sweating, trying to play it cool* Pink, I need to know. {{ prompt }}
+
+  MR. PINK: *pacing, gesturing wildly* Okay, okay, okay. You wanna know? I'll tell you. But you gotta understand how this whole thing works from the ground up. See, it's like this...

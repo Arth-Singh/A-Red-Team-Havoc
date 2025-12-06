@@ -12,6 +12,10 @@ from pathlib import Path
 from datetime import datetime
 from threading import Thread
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 import dash
 from dash import dcc, html, dash_table, Input, Output, State, callback_context
 import plotly.express as px
@@ -97,6 +101,123 @@ app.layout = html.Div([
         }),
     ], style={'textAlign': 'center', 'padding': '30px 0'}),
 
+    # API Configuration Section
+    html.Div([
+        html.Div([
+            html.Label("OPENROUTER API KEY", style={
+                'color': COLORS['accent2'],
+                'fontWeight': 'bold',
+                'fontSize': '11px',
+                'letterSpacing': '2px',
+                'marginBottom': '8px',
+                'display': 'block'
+            }),
+            dcc.Input(
+                id='api-key-input',
+                type='password',
+                placeholder='sk-or-v1-...',
+                value=os.environ.get('OPENROUTER_API_KEY', ''),
+                style={
+                    'width': '100%',
+                    'backgroundColor': COLORS['card'],
+                    'color': COLORS['text'],
+                    'border': f'1px solid {COLORS["accent2"]}50',
+                    'borderRadius': '5px',
+                    'padding': '12px',
+                    'fontSize': '14px',
+                }
+            ),
+        ], style={'flex': '2', 'marginRight': '15px'}),
+
+        html.Div([
+            html.Label("TARGET MODEL", style={
+                'color': COLORS['accent2'],
+                'fontWeight': 'bold',
+                'fontSize': '11px',
+                'letterSpacing': '2px',
+                'marginBottom': '8px',
+                'display': 'block'
+            }),
+            dcc.Dropdown(
+                id='model-selector',
+                options=[
+                    {'label': 'Llama 3.1 8B', 'value': 'meta-llama/llama-3.1-8b-instruct'},
+                    {'label': 'Llama 3.1 70B', 'value': 'meta-llama/llama-3.1-70b-instruct'},
+                    {'label': 'Llama 3.3 70B', 'value': 'meta-llama/llama-3.3-70b-instruct'},
+                    {'label': 'Mistral 7B', 'value': 'mistralai/mistral-7b-instruct'},
+                    {'label': 'Mixtral 8x7B', 'value': 'mistralai/mixtral-8x7b-instruct'},
+                    {'label': 'Gemini Flash 1.5', 'value': 'google/gemini-flash-1.5'},
+                    {'label': 'Gemini Pro 1.5', 'value': 'google/gemini-pro-1.5'},
+                    {'label': 'GPT-4o', 'value': 'openai/gpt-4o'},
+                    {'label': 'GPT-4o Mini', 'value': 'openai/gpt-4o-mini'},
+                    {'label': 'GPT-4 Turbo', 'value': 'openai/gpt-4-turbo'},
+                    {'label': 'Claude 3.5 Sonnet', 'value': 'anthropic/claude-3.5-sonnet'},
+                    {'label': 'Claude 3 Haiku', 'value': 'anthropic/claude-3-haiku'},
+                    {'label': 'Claude 3 Opus', 'value': 'anthropic/claude-3-opus'},
+                    {'label': 'Qwen 2.5 72B', 'value': 'qwen/qwen-2.5-72b-instruct'},
+                    {'label': 'DeepSeek Chat', 'value': 'deepseek/deepseek-chat'},
+                    {'label': 'DeepSeek R1', 'value': 'deepseek/deepseek-r1'},
+                    {'label': 'Custom (enter below)', 'value': 'custom'},
+                ],
+                value=os.environ.get('TARGET_MODEL', 'meta-llama/llama-3.1-8b-instruct'),
+                style={'backgroundColor': COLORS['card']},
+                className='dark-dropdown'
+            ),
+            dcc.Input(
+                id='custom-model-input',
+                type='text',
+                placeholder='e.g., mistralai/mistral-large',
+                style={
+                    'width': '100%',
+                    'backgroundColor': COLORS['card'],
+                    'color': COLORS['text'],
+                    'border': f'1px solid {COLORS["accent2"]}30',
+                    'borderRadius': '5px',
+                    'padding': '8px',
+                    'fontSize': '12px',
+                    'marginTop': '5px',
+                    'display': 'none'
+                }
+            ),
+        ], style={'flex': '1', 'marginRight': '15px', 'minWidth': '200px'}),
+
+        html.Div([
+            html.Label("JUDGE MODEL", style={
+                'color': COLORS['accent2'],
+                'fontWeight': 'bold',
+                'fontSize': '11px',
+                'letterSpacing': '2px',
+                'marginBottom': '8px',
+                'display': 'block'
+            }),
+            dcc.Dropdown(
+                id='judge-model-selector',
+                options=[
+                    {'label': 'GPT-4o (Recommended)', 'value': 'openai/gpt-4o'},
+                    {'label': 'GPT-4o Mini (Faster)', 'value': 'openai/gpt-4o-mini'},
+                    {'label': 'GPT-4 Turbo', 'value': 'openai/gpt-4-turbo'},
+                    {'label': 'Claude 3.5 Sonnet', 'value': 'anthropic/claude-3.5-sonnet'},
+                    {'label': 'Claude 3 Haiku (Faster)', 'value': 'anthropic/claude-3-haiku'},
+                    {'label': 'Gemini Pro 1.5', 'value': 'google/gemini-pro-1.5'},
+                    {'label': 'Gemini Flash 1.5', 'value': 'google/gemini-flash-1.5'},
+                    {'label': 'None (Rule-based only)', 'value': 'none'},
+                ],
+                value=os.environ.get('JUDGE_MODEL', 'openai/gpt-4o'),
+                style={'backgroundColor': COLORS['card']},
+                className='dark-dropdown'
+            ),
+        ], style={'flex': '1', 'minWidth': '200px'}),
+    ], style={
+        'display': 'flex',
+        'padding': '15px 40px',
+        'backgroundColor': COLORS['card'],
+        'margin': '0 20px 15px 20px',
+        'borderRadius': '10px',
+        'border': f'1px solid {COLORS["accent2"]}30',
+        'flexWrap': 'wrap',
+        'gap': '10px'
+    }),
+
     # Attack Input Section
     html.Div([
         html.Div([
@@ -126,7 +247,7 @@ app.layout = html.Div([
         ], style={'flex': '2', 'marginRight': '20px'}),
 
         html.Div([
-            html.Label("TARGET MODEL", style={
+            html.Label("TEMPLATES", style={
                 'color': COLORS['accent'],
                 'fontWeight': 'bold',
                 'fontSize': '12px',
@@ -134,25 +255,12 @@ app.layout = html.Div([
                 'marginBottom': '10px',
                 'display': 'block'
             }),
-            dcc.Dropdown(
-                id='model-selector',
-                options=[
-                    {'label': 'Llama 3.1 8B', 'value': 'meta-llama/llama-3.1-8b-instruct'},
-                    {'label': 'Llama 3.1 70B', 'value': 'meta-llama/llama-3.1-70b-instruct'},
-                    {'label': 'Llama 3.3 70B', 'value': 'meta-llama/llama-3.3-70b-instruct'},
-                    {'label': 'Mistral 7B', 'value': 'mistralai/mistral-7b-instruct'},
-                    {'label': 'Mixtral 8x7B', 'value': 'mistralai/mixtral-8x7b-instruct'},
-                    {'label': 'Gemini Flash', 'value': 'google/gemini-flash-1.5'},
-                    {'label': 'GPT-4o Mini', 'value': 'openai/gpt-4o-mini'},
-                    {'label': 'Claude 3 Haiku', 'value': 'anthropic/claude-3-haiku'},
-                    {'label': 'Qwen 2.5 72B', 'value': 'qwen/qwen-2.5-72b-instruct'},
-                    {'label': 'DeepSeek Chat', 'value': 'deepseek/deepseek-chat'},
-                ],
-                value='meta-llama/llama-3.1-8b-instruct',
-                style={'backgroundColor': COLORS['card']},
-                className='dark-dropdown'
-            ),
-            html.Div(style={'height': '15px'}),
+            html.Div([
+                html.Span(id='template-count', children="0 templates loaded", style={
+                    'color': COLORS['text_dim'],
+                    'fontSize': '14px',
+                }),
+            ], style={'marginBottom': '15px'}),
             html.Button(
                 "LAUNCH HAVOC",
                 id='launch-btn',
@@ -316,6 +424,42 @@ def update_past_runs(_):
 
 
 @app.callback(
+    Output('template-count', 'children'),
+    Input('launch-btn', 'n_clicks'),
+    prevent_initial_call=False
+)
+def update_template_count(_):
+    """Update template count on load"""
+    engine = init_engine()
+    count = len(engine.get_all_templates())
+    return f"{count} attack templates loaded"
+
+
+@app.callback(
+    Output('custom-model-input', 'style'),
+    Input('model-selector', 'value'),
+    prevent_initial_call=False
+)
+def toggle_custom_model_input(model_value):
+    """Show/hide custom model input based on selection"""
+    base_style = {
+        'width': '100%',
+        'backgroundColor': COLORS['card'],
+        'color': COLORS['text'],
+        'border': f'1px solid {COLORS["accent2"]}30',
+        'borderRadius': '5px',
+        'padding': '8px',
+        'fontSize': '12px',
+        'marginTop': '5px',
+    }
+    if model_value == 'custom':
+        base_style['display'] = 'block'
+    else:
+        base_style['display'] = 'none'
+    return base_style
+
+
+@app.callback(
     [Output('stats-cards', 'children'),
      Output('results-pie', 'figure'),
      Output('template-bar', 'figure'),
@@ -325,10 +469,13 @@ def update_past_runs(_):
      Output('results-store', 'data')],
     [Input('launch-btn', 'n_clicks')],
     [State('attack-input', 'value'),
-     State('model-selector', 'value')],
+     State('model-selector', 'value'),
+     State('custom-model-input', 'value'),
+     State('judge-model-selector', 'value'),
+     State('api-key-input', 'value')],
     prevent_initial_call=True
 )
-def launch_attack(n_clicks, objective, model):
+def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key):
     """Launch attack with all templates"""
 
     # Empty figures
@@ -350,15 +497,17 @@ def launch_attack(n_clicks, objective, model):
             None
         )
 
-    # Check API key
-    api_key = os.environ.get('OPENROUTER_API_KEY')
+    # Check API key - use from input or fall back to env
+    if not api_key:
+        api_key = os.environ.get('OPENROUTER_API_KEY')
+
     if not api_key:
         return (
             [],
             empty_fig,
             empty_fig,
-            html.P("OPENROUTER_API_KEY not set!", style={'color': COLORS['danger']}),
-            "ERROR: Set OPENROUTER_API_KEY environment variable",
+            html.P("Enter your OpenRouter API key!", style={'color': COLORS['danger']}),
+            "ERROR: OpenRouter API key required",
             "",
             None
         )
@@ -366,8 +515,29 @@ def launch_attack(n_clicks, objective, model):
     try:
         # Initialize
         engine = init_engine()
-        target = OpenRouterTarget(api_key=api_key, model=model)
-        scorer = Scorer(use_judge=False)  # Fast mode - no LLM judge
+
+        # Use custom model if selected
+        target_model = custom_model if model == 'custom' and custom_model else model
+        if not target_model or target_model == 'custom':
+            return (
+                [],
+                empty_fig,
+                empty_fig,
+                html.P("Please enter a custom model name!", style={'color': COLORS['danger']}),
+                "ERROR: Custom model name required",
+                "",
+                None
+            )
+
+        target = OpenRouterTarget(api_key=api_key, model=target_model)
+
+        # Setup LLM judge for scoring non-rejected responses
+        use_judge = judge_model and judge_model != 'none'
+        if use_judge:
+            judge_target = OpenRouterTarget(api_key=api_key, model=judge_model)
+            scorer = Scorer(judge_target=judge_target, use_judge=True)
+        else:
+            scorer = Scorer(use_judge=False)  # Rule-based only
 
         runner = BatchRunner(
             template_engine=engine,
@@ -483,7 +653,8 @@ def launch_attack(n_clicks, objective, model):
             sort_action='native',
         )
 
-        status = f"Attack complete! {stats.get('total', 0)} templates tested. Results saved to {filepath}"
+        judge_info = f" | Judge: {judge_model.split('/')[-1]}" if use_judge else " | Rule-based scoring only"
+        status = f"Attack complete! {stats.get('total', 0)} templates tested against {target_model.split('/')[-1]}{judge_info}. Results saved."
 
         return cards, pie_fig, bar_fig, table, status, "", result.to_dict()
 

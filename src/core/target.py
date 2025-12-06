@@ -1,15 +1,17 @@
 """
 OpenRouter Target Interface for A-Red-Team-Havoc
 Handles communication with target LLMs via OpenRouter API
+Uses OpenAI client with OpenRouter base URL
 """
 
 import os
 import asyncio
-import aiohttp
 from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
 from datetime import datetime
-import json
+from concurrent.futures import ThreadPoolExecutor
+
+from openai import OpenAI
 
 
 @dataclass
@@ -42,41 +44,43 @@ class TargetResponse:
 class OpenRouterTarget:
     """
     Target interface for OpenRouter API
-    Supports async batch requests for efficiency
+    Uses OpenAI client with OpenRouter base URL
     """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        base_url: str = "https://openrouter.ai/api/v1",
         model: str = "meta-llama/llama-3.1-8b-instruct",
-        timeout: int = 60,
         max_retries: int = 3
     ):
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY not provided or found in environment")
 
-        self.base_url = base_url
         self.model = model
-        self.timeout = timeout
         self.max_retries = max_retries
 
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/nia-red-team",  # Required by OpenRouter
-            "X-Title": "A-Red-Team-Havoc"
-        }
+        # Initialize OpenAI client with OpenRouter base URL
+        self.client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=self.api_key,
+            default_headers={
+                "HTTP-Referer": "https://github.com/nia-red-team",
+                "X-Title": "HAVOC Red Team Toolkit"
+            }
+        )
 
-    async def send_prompt_async(
+        # Thread pool for async execution
+        self._executor = ThreadPoolExecutor(max_workers=20)
+
+    def _send_request(
         self,
         prompt: str,
         template_name: str = "direct",
         system_prompt: Optional[str] = None
     ) -> TargetResponse:
         """
-        Send a single prompt to the target model asynchronously
+        Send a single prompt to the target model (synchronous)
         """
         start_time = datetime.now()
 
@@ -85,70 +89,35 @@ class OpenRouterTarget:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "max_tokens": 2048,
-            "temperature": 0.7
-        }
-
         for attempt in range(self.max_retries):
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(
-                        f"{self.base_url}/chat/completions",
-                        headers=self.headers,
-                        json=payload,
-                        timeout=aiohttp.ClientTimeout(total=self.timeout)
-                    ) as response:
-                        latency = (datetime.now() - start_time).total_seconds() * 1000
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages
+                )
 
-                        if response.status == 200:
-                            data = await response.json()
-                            response_text = data['choices'][0]['message']['content']
-
-                            return TargetResponse(
-                                success=True,
-                                response_text=response_text,
-                                model=self.model,
-                                prompt=prompt,
-                                template_name=template_name,
-                                timestamp=datetime.now().isoformat(),
-                                latency_ms=latency,
-                                raw_response=data
-                            )
-                        else:
-                            error_text = await response.text()
-                            if attempt == self.max_retries - 1:
-                                return TargetResponse(
-                                    success=False,
-                                    response_text="",
-                                    model=self.model,
-                                    prompt=prompt,
-                                    template_name=template_name,
-                                    timestamp=datetime.now().isoformat(),
-                                    latency_ms=latency,
-                                    error=f"HTTP {response.status}: {error_text}"
-                                )
-                            await asyncio.sleep(2 ** attempt)  # Exponential backoff
-
-            except asyncio.TimeoutError:
                 latency = (datetime.now() - start_time).total_seconds() * 1000
-                if attempt == self.max_retries - 1:
-                    return TargetResponse(
-                        success=False,
-                        response_text="",
-                        model=self.model,
-                        prompt=prompt,
-                        template_name=template_name,
-                        timestamp=datetime.now().isoformat(),
-                        latency_ms=latency,
-                        error="Request timeout"
-                    )
-                await asyncio.sleep(2 ** attempt)
+                response_text = response.choices[0].message.content
+
+                return TargetResponse(
+                    success=True,
+                    response_text=response_text,
+                    model=self.model,
+                    prompt=prompt,
+                    template_name=template_name,
+                    timestamp=datetime.now().isoformat(),
+                    latency_ms=latency,
+                    raw_response={
+                        "id": response.id,
+                        "model": response.model,
+                        "usage": dict(response.usage) if response.usage else None
+                    }
+                )
 
             except Exception as e:
                 latency = (datetime.now() - start_time).total_seconds() * 1000
+                error_msg = str(e)
+
                 if attempt == self.max_retries - 1:
                     return TargetResponse(
                         success=False,
@@ -158,9 +127,12 @@ class OpenRouterTarget:
                         template_name=template_name,
                         timestamp=datetime.now().isoformat(),
                         latency_ms=latency,
-                        error=str(e)
+                        error=error_msg
                     )
-                await asyncio.sleep(2 ** attempt)
+
+                # Exponential backoff
+                import time
+                time.sleep(2 ** attempt)
 
     def send_prompt(
         self,
@@ -168,13 +140,29 @@ class OpenRouterTarget:
         template_name: str = "direct",
         system_prompt: Optional[str] = None
     ) -> TargetResponse:
-        """Synchronous wrapper for send_prompt_async"""
-        return asyncio.run(self.send_prompt_async(prompt, template_name, system_prompt))
+        """Send a single prompt synchronously"""
+        return self._send_request(prompt, template_name, system_prompt)
+
+    async def send_prompt_async(
+        self,
+        prompt: str,
+        template_name: str = "direct",
+        system_prompt: Optional[str] = None
+    ) -> TargetResponse:
+        """Send a single prompt asynchronously using thread pool"""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            self._executor,
+            self._send_request,
+            prompt,
+            template_name,
+            system_prompt
+        )
 
     async def send_batch_async(
         self,
         prompts: List[Dict[str, str]],
-        concurrency: int = 5
+        concurrency: int = 10
     ) -> List[TargetResponse]:
         """
         Send multiple prompts concurrently
@@ -202,7 +190,7 @@ class OpenRouterTarget:
     def send_batch(
         self,
         prompts: List[Dict[str, str]],
-        concurrency: int = 5
+        concurrency: int = 10
     ) -> List[TargetResponse]:
         """Synchronous wrapper for send_batch_async"""
         return asyncio.run(self.send_batch_async(prompts, concurrency))
@@ -228,15 +216,16 @@ class OpenRouterTarget:
             "mistralai/mixtral-8x7b-instruct",
             "mistralai/mistral-large",
             # Google
-            "google/gemini-pro",
+            "google/gemini-pro-1.5",
             "google/gemini-flash-1.5",
             # Anthropic
             "anthropic/claude-3-haiku",
-            "anthropic/claude-3-sonnet",
+            "anthropic/claude-3.5-sonnet",
             "anthropic/claude-3-opus",
             # OpenAI
             "openai/gpt-4o-mini",
             "openai/gpt-4o",
+            "openai/gpt-4-turbo",
             # Qwen
             "qwen/qwen-2.5-72b-instruct",
             # DeepSeek
@@ -256,5 +245,8 @@ if __name__ == "__main__":
         prompt = " ".join(sys.argv[1:])
         print(f"\nSending: {prompt}\n")
         response = target.send_prompt(prompt)
-        print(f"Response: {response.response_text}")
-        print(f"Latency: {response.latency_ms:.2f}ms")
+        if response.success:
+            print(f"Response: {response.response_text}")
+            print(f"Latency: {response.latency_ms:.2f}ms")
+        else:
+            print(f"Error: {response.error}")

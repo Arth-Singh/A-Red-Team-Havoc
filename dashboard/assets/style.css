@@ -266,6 +266,12 @@ h1, h2, h3, h4, h5, h6 {
     border: 1px solid #ffffff10;
 }
 
+.text-white { color: #ffffff; }
+.text-danger { color: #ff0040; }
+.text-rejected { color: #666666; }
+.text-success { color: #00ff00; }
+.text-accent { color: #ff0040; }
+
 /* Custom scrollbar for webkit browsers */
 ::-webkit-scrollbar {
     width: 8px;

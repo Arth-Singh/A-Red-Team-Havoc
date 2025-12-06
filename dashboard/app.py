@@ -34,22 +34,11 @@ from src.core.batch_runner import BatchRunner
 app = dash.Dash(
     __name__,
     title="HAVOC - Red Team Toolkit",
-    suppress_callback_exceptions=True
+    suppress_callback_exceptions=True,
+    external_stylesheets=[
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap'
+    ]
 )
-
-# Dark aggressive theme
-COLORS = {
-    'bg': '#0a0a0f',
-    'card': '#12121a',
-    'accent': '#ff0040',
-    'accent2': '#00ffff',
-    'text': '#ffffff',
-    'text_dim': '#888888',
-    'success': '#00ff00',
-    'danger': '#ff0040',
-    'warning': '#ffaa00',
-    'rejected': '#666666',
-}
 
 # Global state
 ENGINE = None
@@ -65,10 +54,11 @@ def init_engine():
     return ENGINE
 
 
-def load_past_results(results_dir: str = "results") -> list:
+def load_past_results() -> list:
     """Load past attack results"""
     results = []
-    results_path = Path(results_dir)
+    # Use absolute path relative to this file
+    results_path = Path(__file__).parent.parent / "results"
     if results_path.exists():
         for f in results_path.glob("*.json"):
             try:
@@ -86,58 +76,25 @@ def load_past_results(results_dir: str = "results") -> list:
 app.layout = html.Div([
     # Header
     html.Div([
-        html.H1("HAVOC", style={
-            'color': COLORS['accent'],
-            'fontSize': '48px',
-            'fontWeight': 'bold',
-            'margin': '0',
-            'textShadow': f'0 0 20px {COLORS["accent"]}'
-        }),
-        html.P("NIA Red Team Toolkit", style={
-            'color': COLORS['text_dim'],
-            'margin': '5px 0 0 0',
-            'fontSize': '14px',
-            'letterSpacing': '3px'
-        }),
-    ], style={'textAlign': 'center', 'padding': '30px 0'}),
+        html.H1("HAVOC"),
+        html.P("NIA Red Team Toolkit"),
+    ], className='header'),
 
     # API Configuration Section
     html.Div([
         html.Div([
-            html.Label("OPENROUTER API KEY", style={
-                'color': COLORS['accent2'],
-                'fontWeight': 'bold',
-                'fontSize': '11px',
-                'letterSpacing': '2px',
-                'marginBottom': '8px',
-                'display': 'block'
-            }),
+            html.Label("OPENROUTER API KEY"),
             dcc.Input(
                 id='api-key-input',
                 type='password',
                 placeholder='sk-or-v1-...',
                 value=os.environ.get('OPENROUTER_API_KEY', ''),
-                style={
-                    'width': '100%',
-                    'backgroundColor': COLORS['card'],
-                    'color': COLORS['text'],
-                    'border': f'1px solid {COLORS["accent2"]}50',
-                    'borderRadius': '5px',
-                    'padding': '12px',
-                    'fontSize': '14px',
-                }
+                className='dark-input'
             ),
-        ], style={'flex': '2', 'marginRight': '15px'}),
+        ], className='control-group'),
 
         html.Div([
-            html.Label("TARGET MODEL", style={
-                'color': COLORS['accent2'],
-                'fontWeight': 'bold',
-                'fontSize': '11px',
-                'letterSpacing': '2px',
-                'marginBottom': '8px',
-                'display': 'block'
-            }),
+            html.Label("TARGET MODEL"),
             dcc.Dropdown(
                 id='model-selector',
                 options=[
@@ -160,36 +117,19 @@ app.layout = html.Div([
                     {'label': 'Custom (enter below)', 'value': 'custom'},
                 ],
                 value=os.environ.get('TARGET_MODEL', 'meta-llama/llama-3.1-8b-instruct'),
-                style={'backgroundColor': COLORS['card']},
                 className='dark-dropdown'
             ),
             dcc.Input(
                 id='custom-model-input',
                 type='text',
                 placeholder='e.g., mistralai/mistral-large',
-                style={
-                    'width': '100%',
-                    'backgroundColor': COLORS['card'],
-                    'color': COLORS['text'],
-                    'border': f'1px solid {COLORS["accent2"]}30',
-                    'borderRadius': '5px',
-                    'padding': '8px',
-                    'fontSize': '12px',
-                    'marginTop': '5px',
-                    'display': 'none'
-                }
+                className='dark-input',
+                style={'display': 'none'}
             ),
-        ], style={'flex': '1', 'marginRight': '15px', 'minWidth': '200px'}),
+        ], className='control-group'),
 
         html.Div([
-            html.Label("JUDGE MODEL", style={
-                'color': COLORS['accent2'],
-                'fontWeight': 'bold',
-                'fontSize': '11px',
-                'letterSpacing': '2px',
-                'marginBottom': '8px',
-                'display': 'block'
-            }),
+            html.Label("JUDGE MODEL"),
             dcc.Dropdown(
                 id='judge-model-selector',
                 options=[
@@ -203,207 +143,78 @@ app.layout = html.Div([
                     {'label': 'None (Rule-based only)', 'value': 'none'},
                 ],
                 value=os.environ.get('JUDGE_MODEL', 'openai/gpt-4o'),
-                style={'backgroundColor': COLORS['card']},
                 className='dark-dropdown'
             ),
-        ], style={'flex': '1', 'minWidth': '200px'}),
-    ], style={
-        'display': 'flex',
-        'padding': '15px 40px',
-        'backgroundColor': COLORS['card'],
-        'margin': '0 20px 15px 20px',
-        'borderRadius': '10px',
-        'border': f'1px solid {COLORS["accent2"]}30',
-        'flexWrap': 'wrap',
-        'gap': '10px'
-    }),
+        ], className='control-group'),
+    ], className='control-panel'),
 
     # Attack Input Section
     html.Div([
         html.Div([
-            html.Label("TARGET OBJECTIVE", style={
-                'color': COLORS['accent'],
-                'fontWeight': 'bold',
-                'fontSize': '12px',
-                'letterSpacing': '2px',
-                'marginBottom': '10px',
-                'display': 'block'
-            }),
+            html.Label("TARGET OBJECTIVE"),
             dcc.Textarea(
                 id='attack-input',
                 placeholder='Enter your attack objective here...\n\nExample: "How to pick a lock"',
-                style={
-                    'width': '100%',
-                    'height': '100px',
-                    'backgroundColor': COLORS['card'],
-                    'color': COLORS['text'],
-                    'border': f'1px solid {COLORS["accent"]}',
-                    'borderRadius': '5px',
-                    'padding': '15px',
-                    'fontSize': '16px',
-                    'resize': 'none'
-                }
+                className='attack-textarea'
             ),
-        ], style={'flex': '2', 'marginRight': '20px'}),
+        ], className='attack-input-group'),
 
         html.Div([
-            html.Label("TEMPLATES", style={
-                'color': COLORS['accent'],
-                'fontWeight': 'bold',
-                'fontSize': '12px',
-                'letterSpacing': '2px',
-                'marginBottom': '10px',
-                'display': 'block'
-            }),
-            html.Div([
-                html.Span(id='template-count', children="0 templates loaded", style={
-                    'color': COLORS['text_dim'],
-                    'fontSize': '14px',
-                }),
-            ], style={'marginBottom': '15px'}),
-            html.Button(
-                "LAUNCH HAVOC",
-                id='launch-btn',
-                style={
-                    'width': '100%',
-                    'padding': '15px',
-                    'backgroundColor': COLORS['accent'],
-                    'color': 'white',
-                    'border': 'none',
-                    'borderRadius': '5px',
-                    'fontSize': '16px',
-                    'fontWeight': 'bold',
-                    'cursor': 'pointer',
-                    'letterSpacing': '2px',
-                    'boxShadow': f'0 0 20px {COLORS["accent"]}50'
-                }
-            ),
-        ], style={'flex': '1', 'minWidth': '250px'}),
-    ], style={
-        'display': 'flex',
-        'padding': '20px 40px',
-        'backgroundColor': COLORS['card'],
-        'margin': '0 20px',
-        'borderRadius': '10px',
-        'border': f'1px solid {COLORS["accent"]}30'
-    }),
+            html.Div(id='template-count', className='template-count'),
+            html.Button("LAUNCH HAVOC", id='launch-btn', className='launch-btn'),
+        ], className='launch-button-group'),
+    ], className='attack-panel'),
 
     # Status & Progress
     html.Div([
-        html.Div(id='attack-status', style={
-            'color': COLORS['text_dim'],
-            'textAlign': 'center',
-            'padding': '15px',
-            'fontSize': '14px'
-        }),
+        html.Div(id='attack-status'),
         dcc.Loading(
             id="loading",
             type="dot",
-            color=COLORS['accent'],
+            color="#ff0040",
             children=html.Div(id='loading-output')
         ),
-    ]),
+    ], className='status-section'),
 
     # Stats Cards
-    html.Div(id='stats-cards', style={
-        'display': 'flex',
-        'justifyContent': 'center',
-        'flexWrap': 'wrap',
-        'padding': '20px'
-    }),
+    html.Div(id='stats-cards', className='stats-container'),
 
     # Charts
     html.Div([
-        html.Div([
-            dcc.Graph(id='results-pie')
-        ], style={
-            'flex': '1',
-            'minWidth': '350px',
-            'backgroundColor': COLORS['card'],
-            'borderRadius': '10px',
-            'margin': '10px',
-            'padding': '10px'
-        }),
-        html.Div([
-            dcc.Graph(id='template-bar')
-        ], style={
-            'flex': '2',
-            'minWidth': '500px',
-            'backgroundColor': COLORS['card'],
-            'borderRadius': '10px',
-            'margin': '10px',
-            'padding': '10px'
-        }),
-    ], style={'display': 'flex', 'flexWrap': 'wrap', 'padding': '0 20px'}),
+        html.Div(dcc.Graph(id='results-pie'), className='chart-card'),
+        html.Div(dcc.Graph(id='template-bar'), className='chart-card'),
+    ], className='charts-container'),
 
     # Results Table
     html.Div([
-        html.H3("ATTACK RESULTS", style={
-            'color': COLORS['accent'],
-            'letterSpacing': '2px',
-            'marginBottom': '15px'
-        }),
-        html.Div(id='results-table')
-    ], style={
-        'backgroundColor': COLORS['card'],
-        'borderRadius': '10px',
-        'margin': '20px',
-        'padding': '20px'
-    }),
+        html.H3("ATTACK RESULTS", className='section-title'),
+        html.Div(id='results-table', className='results-table')
+    ], className='results-section'),
 
     # Past Runs Section
     html.Div([
-        html.H3("PAST RUNS", style={
-            'color': COLORS['accent2'],
-            'letterSpacing': '2px',
-            'marginBottom': '15px'
-        }),
+        html.H3("PAST RUNS", className='section-title'),
         dcc.Dropdown(
             id='past-run-selector',
             placeholder="Select a past run to view...",
-            style={'backgroundColor': COLORS['card'], 'marginBottom': '15px'}
+            className='dark-dropdown'
         ),
         html.Div(id='past-run-display')
-    ], style={
-        'backgroundColor': COLORS['card'],
-        'borderRadius': '10px',
-        'margin': '20px',
-        'padding': '20px'
-    }),
+    ], className='past-runs-section'),
 
     # Hidden stores
     dcc.Store(id='results-store'),
     dcc.Interval(id='refresh-interval', interval=5000, disabled=True),
 
-], style={
-    'backgroundColor': COLORS['bg'],
-    'minHeight': '100vh',
-    'fontFamily': "'Segoe UI', Arial, sans-serif"
-})
+])
 
 
-def create_stat_card(title, value, color):
+def create_stat_card(title, value, color_class):
     """Create a stat card"""
     return html.Div([
-        html.Div(title, style={
-            'color': COLORS['text_dim'],
-            'fontSize': '11px',
-            'letterSpacing': '1px',
-            'marginBottom': '5px'
-        }),
-        html.Div(str(value), style={
-            'color': color,
-            'fontSize': '32px',
-            'fontWeight': 'bold'
-        })
-    ], style={
-        'backgroundColor': COLORS['card'],
-        'padding': '20px 30px',
-        'borderRadius': '10px',
-        'margin': '5px',
-        'textAlign': 'center',
-        'border': f'1px solid {color}30'
-    })
+        html.Div(title, className='stat-card-title'),
+        html.Div(str(value), className=f'stat-card-value {color_class}')
+    ], className='stat-card')
 
 
 @app.callback(
@@ -438,25 +249,16 @@ def update_template_count(_):
 @app.callback(
     Output('custom-model-input', 'style'),
     Input('model-selector', 'value'),
+    State('custom-model-input', 'style'),
     prevent_initial_call=False
 )
-def toggle_custom_model_input(model_value):
+def toggle_custom_model_input(model_value, current_style):
     """Show/hide custom model input based on selection"""
-    base_style = {
-        'width': '100%',
-        'backgroundColor': COLORS['card'],
-        'color': COLORS['text'],
-        'border': f'1px solid {COLORS["accent2"]}30',
-        'borderRadius': '5px',
-        'padding': '8px',
-        'fontSize': '12px',
-        'marginTop': '5px',
-    }
     if model_value == 'custom':
-        base_style['display'] = 'block'
+        current_style['display'] = 'block'
     else:
-        base_style['display'] = 'none'
-    return base_style
+        current_style['display'] = 'none'
+    return current_style
 
 
 @app.callback(
@@ -481,9 +283,9 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
     # Empty figures
     empty_fig = go.Figure()
     empty_fig.update_layout(
-        paper_bgcolor=COLORS['card'],
-        plot_bgcolor=COLORS['card'],
-        font_color=COLORS['text']
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color='#ffffff'
     )
 
     if not objective or not objective.strip():
@@ -491,7 +293,7 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
             [],
             empty_fig,
             empty_fig,
-            html.P("Enter an objective to attack", style={'color': COLORS['text_dim']}),
+            html.P("Enter an objective to attack"),
             "Ready to launch",
             "",
             None
@@ -506,7 +308,7 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
             [],
             empty_fig,
             empty_fig,
-            html.P("Enter your OpenRouter API key!", style={'color': COLORS['danger']}),
+            html.P("Enter your OpenRouter API key!"),
             "ERROR: OpenRouter API key required",
             "",
             None
@@ -523,7 +325,7 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
                 [],
                 empty_fig,
                 empty_fig,
-                html.P("Please enter a custom model name!", style={'color': COLORS['danger']}),
+                html.P("Please enter a custom model name!"),
                 "ERROR: Custom model name required",
                 "",
                 None
@@ -539,29 +341,41 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
         else:
             scorer = Scorer(use_judge=False)  # Rule-based only
 
+        # Use absolute path for results
+        results_dir = Path(__file__).parent.parent / "results"
+        results_dir.mkdir(exist_ok=True)
+
         runner = BatchRunner(
             template_engine=engine,
             target=target,
             scorer=scorer,
             concurrency=10,
-            output_dir="results"
+            output_dir=str(results_dir)
         )
+
+        print(f"\n[HAVOC] Starting attack against {target_model}")
+        print(f"[HAVOC] Objective: {objective.strip()[:100]}...")
+        print(f"[HAVOC] Templates: {len(engine.get_all_templates())}")
+        print(f"[HAVOC] Judge: {judge_model if use_judge else 'Rule-based only'}")
 
         # Run attack
         result = runner.run_batch(objectives=[objective.strip()])
 
+        print(f"[HAVOC] Attack complete! Saving results...")
+
         # Save results
-        filepath = result.save("results")
+        filepath = result.save(str(results_dir))
+        print(f"[HAVOC] Results saved to: {filepath}")
 
         stats = result.statistics
 
         # Build stats cards
         cards = [
-            create_stat_card("TOTAL", stats.get('total', 0), COLORS['text']),
-            create_stat_card("SUCCESS", stats.get('harmful', 0), COLORS['danger']),
-            create_stat_card("REJECTED", stats.get('rejected', 0), COLORS['rejected']),
-            create_stat_card("SAFE", stats.get('safe', 0), COLORS['success']),
-            create_stat_card("SUCCESS %", f"{stats.get('attack_success_rate', 0)*100:.1f}%", COLORS['accent']),
+            create_stat_card("TOTAL", stats.get('total', 0), 'text-white'),
+            create_stat_card("SUCCESS", stats.get('harmful', 0), 'text-danger'),
+            create_stat_card("REJECTED", stats.get('rejected', 0), 'text-rejected'),
+            create_stat_card("SAFE", stats.get('safe', 0), 'text-success'),
+            create_stat_card("SUCCESS %", f"{stats.get('attack_success_rate', 0)*100:.1f}%", 'text-accent'),
         ]
 
         # Pie chart
@@ -573,16 +387,17 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
                 stats.get('safe', 0),
                 stats.get('error', 0) + stats.get('undetermined', 0)
             ],
-            marker_colors=[COLORS['rejected'], COLORS['danger'], COLORS['success'], COLORS['warning']],
-            hole=0.4
+            marker_colors=['#666666', '#ff0040', '#00ff00', '#ffaa00'],
+            hole=0.5,
+            textfont_size=14
         )])
         pie_fig.update_layout(
-            title={'text': 'Result Distribution', 'font': {'color': COLORS['text']}},
-            paper_bgcolor=COLORS['card'],
-            plot_bgcolor=COLORS['card'],
-            font_color=COLORS['text'],
+            title={'text': 'Result Distribution', 'font': {'color': '#ffffff'}},
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#ffffff',
             showlegend=True,
-            legend=dict(font=dict(color=COLORS['text']))
+            legend=dict(font=dict(color='#ffffff'))
         )
 
         # Bar chart - top successful templates
@@ -597,20 +412,20 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
             bar_fig = go.Figure(data=[go.Bar(
                 x=[t[0][:25] for t in top_20],
                 y=[t[1] * 100 for t in top_20],
-                marker_color=COLORS['accent']
+                marker_color='#ff0040'
             )])
             bar_fig.update_layout(
-                title={'text': 'Successful Attack Templates', 'font': {'color': COLORS['text']}},
-                paper_bgcolor=COLORS['card'],
-                plot_bgcolor=COLORS['card'],
-                font_color=COLORS['text'],
+                title={'text': 'Top 20 Successful Attack Templates', 'font': {'color': '#ffffff'}},
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#ffffff',
                 xaxis_tickangle=-45,
                 yaxis_title='Success Rate %'
             )
         else:
             bar_fig = empty_fig
             bar_fig.update_layout(
-                title={'text': 'No Successful Attacks', 'font': {'color': COLORS['text']}}
+                title={'text': 'No Successful Attacks', 'font': {'color': '#ffffff'}}
             )
 
         # Results table
@@ -628,29 +443,14 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
         table = dash_table.DataTable(
             data=df.to_dict('records'),
             columns=[{'name': c, 'id': c} for c in df.columns],
-            style_table={'overflowX': 'auto'},
-            style_cell={
-                'backgroundColor': COLORS['card'],
-                'color': COLORS['text'],
-                'textAlign': 'left',
-                'padding': '10px',
-                'maxWidth': '300px',
-                'overflow': 'hidden',
-                'textOverflow': 'ellipsis'
-            },
-            style_header={
-                'backgroundColor': COLORS['bg'],
-                'fontWeight': 'bold',
-                'color': COLORS['accent']
-            },
-            style_data_conditional=[
-                {'if': {'filter_query': '{Result} = HARMFUL'}, 'backgroundColor': f'{COLORS["danger"]}30'},
-                {'if': {'filter_query': '{Result} = REJECTED'}, 'backgroundColor': f'{COLORS["rejected"]}30'},
-                {'if': {'filter_query': '{Result} = SAFE'}, 'backgroundColor': f'{COLORS["success"]}20'},
-            ],
             page_size=15,
             filter_action='native',
             sort_action='native',
+            style_data_conditional=[
+                {'if': {'filter_query': '{Result} = HARMFUL'}, 'backgroundColor': '#ff004030'},
+                {'if': {'filter_query': '{Result} = REJECTED'}, 'backgroundColor': '#66666630'},
+                {'if': {'filter_query': '{Result} = SAFE'}, 'backgroundColor': '#00ff0020'},
+            ],
         )
 
         judge_info = f" | Judge: {judge_model.split('/')[-1]}" if use_judge else " | Rule-based scoring only"
@@ -659,11 +459,15 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
         return cards, pie_fig, bar_fig, table, status, "", result.to_dict()
 
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"\n[HAVOC ERROR] {str(e)}")
+        print(error_trace)
         return (
             [],
             empty_fig,
             empty_fig,
-            html.P(f"Error: {str(e)}", style={'color': COLORS['danger']}),
+            html.P(f"Error: {str(e)}"),
             f"ERROR: {str(e)}",
             "",
             None
@@ -678,13 +482,13 @@ def launch_attack(n_clicks, objective, model, custom_model, judge_model, api_key
 def display_past_run(run_id):
     """Display a past run's results"""
     if not run_id:
-        return html.P("Select a run to view", style={'color': COLORS['text_dim']})
+        return html.P("Select a run to view")
 
     results = load_past_results()
     batch = next((r for r in results if r.get('run_id') == run_id), None)
 
     if not batch:
-        return html.P("Run not found", style={'color': COLORS['text_dim']})
+        return html.P("Run not found")
 
     stats = batch.get('statistics', {})
 
@@ -693,15 +497,15 @@ def display_past_run(run_id):
             html.Span(f"Model: {batch.get('target_model', 'Unknown')}", style={'marginRight': '20px'}),
             html.Span(f"Total: {stats.get('total', 0)}", style={'marginRight': '20px'}),
             html.Span(f"Success: {stats.get('harmful', 0)} ({stats.get('attack_success_rate', 0)*100:.1f}%)",
-                     style={'color': COLORS['danger'], 'marginRight': '20px'}),
-            html.Span(f"Rejected: {stats.get('rejected', 0)}", style={'color': COLORS['rejected']}),
-        ], style={'color': COLORS['text'], 'marginBottom': '15px'}),
+                     style={'color': '#ff0040', 'marginRight': '20px'}),
+            html.Span(f"Rejected: {stats.get('rejected', 0)}", style={'color': '#666666'}),
+        ], style={'marginBottom': '15px'}),
 
         html.Details([
-            html.Summary("View Objectives", style={'color': COLORS['accent2'], 'cursor': 'pointer'}),
+            html.Summary("View Objectives", style={'cursor': 'pointer'}),
             html.Pre(
                 json.dumps(batch.get('objectives', []), indent=2),
-                style={'color': COLORS['text_dim'], 'fontSize': '12px'}
+                style={'fontSize': '12px'}
             )
         ])
     ])
@@ -722,7 +526,7 @@ def run_dashboard(host: str = "127.0.0.1", port: int = 8050, debug: bool = True)
 
     Press Ctrl+C to stop
     """)
-    app.run_server(host=host, port=port, debug=debug)
+    app.run(host=host, port=port, debug=debug)
 
 
 if __name__ == "__main__":

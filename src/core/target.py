@@ -99,6 +99,15 @@ class OpenRouterTarget:
                 latency = (datetime.now() - start_time).total_seconds() * 1000
                 response_text = response.choices[0].message.content
 
+                # Convert usage to simple dict (avoid non-serializable objects)
+                usage_dict = None
+                if response.usage:
+                    usage_dict = {
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                        "total_tokens": response.usage.total_tokens
+                    }
+
                 return TargetResponse(
                     success=True,
                     response_text=response_text,
@@ -110,7 +119,7 @@ class OpenRouterTarget:
                     raw_response={
                         "id": response.id,
                         "model": response.model,
-                        "usage": dict(response.usage) if response.usage else None
+                        "usage": usage_dict
                     }
                 )
 

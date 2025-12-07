@@ -1,6 +1,5 @@
-# A-Red-Team-Havoc
-
-NIA Red Team Toolkit for LLM Security Testing
+# A-Red-Team-Havo
+Red Team Toolkit for LLM Security Testing
 
 ## Overview
 

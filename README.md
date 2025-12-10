@@ -1,4 +1,4 @@
-# A-Red-Team-Havo
+# AI-Red-Team-Havoc
 Red Team Toolkit for LLM Security Testing
 
 ## Overview
